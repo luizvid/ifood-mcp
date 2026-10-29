@@ -3,7 +3,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { readFileSync, writeFileSync } from "fs";
+import { chmodSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
@@ -68,7 +68,9 @@ function loadPersistedTokens(): { accessToken: string } {
 
 function persistTokens(tokens: { accessToken: string }) {
   try {
-    writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), "utf-8");
+    // 0o600: token file readable only by the owner
+    writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { encoding: "utf-8", mode: 0o600 });
+    chmodSync(TOKEN_FILE, 0o600); // mode above only applies on creation
   } catch {
     // best-effort
   }
@@ -199,7 +201,7 @@ const SEARCH_BODY = {
 // GraphQL query used by ifood_merchant_info — returns full merchant + merchantExtra data
 const MERCHANT_INFO_QUERY = `query ($merchantId: String!) { merchant (merchantId: $merchantId, required: true) { available availableForScheduling contextSetup { catalogGroup context regionGroup } currency deliveryFee { originalValue type value } deliveryMethods { catalogGroup deliveredBy id maxTime minTime mode originalValue priority schedule { now shifts { dayOfWeek endTime interval startTime } timeSlots { availableLoad date endDateTime endTime id isAvailable originalPrice price startDateTime startTime } } subtitle title type value state } deliveryTime distance features id mainCategory { code name } minimumOrderValue name paymentCodes preparationTime priceRange resources { fileName type } slug tags takeoutTime userRating } merchantExtra (merchantId: $merchantId, required: false) { address { city country district latitude longitude state streetName streetNumber timezone zipCode } categories { code description friendlyName } companyCode configs { bagItemNoteLength chargeDifferentToppingsMode nationalIdentificationNumberRequired orderNoteLength } deliveryTime description documents { CNPJ { type value } MCC { type value } } enabled features groups { externalId id name type } id locale mainCategory { code description friendlyName } merchantChain { externalId id name } minimumOrderValue minimumOrderValueV2 name phoneIf priceRange resources { fileName type } shifts { dayOfWeek duration start } shortId tags takeoutTime test type userRatingCount } }`;
 
-export const toolDefinitions: McpToolDefinition[] = [
+const allToolDefinitions: McpToolDefinition[] = [
   // ─── Customer ────────────────────────────────────────────────────────────────
   {
     name: "ifood_customer_me",
@@ -707,6 +709,23 @@ export const toolDefinitions: McpToolDefinition[] = [
     requiresDevicePaymentSecret: true,
   },
 ];
+
+/**
+ * Tools that create carts or place orders. Disabled by default so the server
+ * is read-only; set IFOOD_ENABLE_ORDERING=true to expose them.
+ */
+const WRITE_TOOLS = new Set([
+  "ifood_cart_create",
+  "ifood_cart_set_delivery_method",
+  "ifood_cart_set_payment_method",
+  "ifood_checkout",
+]);
+
+const orderingEnabled = process.env.IFOOD_ENABLE_ORDERING === "true";
+
+export const toolDefinitions: McpToolDefinition[] = orderingEnabled
+  ? allToolDefinitions
+  : allToolDefinitions.filter((t) => !WRITE_TOOLS.has(t.name));
 
 const toolMap = new Map(toolDefinitions.map((t) => [t.name, t]));
 

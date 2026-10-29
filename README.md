@@ -9,6 +9,16 @@ Unofficial [Model Context Protocol](https://modelcontextprotocol.io/) server for
 
 > Not affiliated with iFood. Wraps the public consumer web API for personal use.
 
+## Fork hardening (luizvid)
+
+This fork changes three defaults:
+
+| Change | Default | Opt-out |
+|---|---|---|
+| Ordering tools (`ifood_cart_create`, `ifood_cart_set_delivery_method`, `ifood_cart_set_payment_method`, `ifood_checkout`) are hidden — the server is read-only (21 tools) | off | `IFOOD_ENABLE_ORDERING=true` |
+| HTTP server listens on loopback only | `127.0.0.1` | `HOST=0.0.0.0` |
+| `~/.ifood-tokens.json` is written with mode `600` | always | — |
+
 ## What This MCP Server Does
 
 This MCP server gives AI assistants (Claude Code, Claude Desktop, Cursor, Codex, etc.) access to your iFood account. It exposes 25 tools that let an AI:

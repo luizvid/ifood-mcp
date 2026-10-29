@@ -47,6 +47,8 @@ import { createLoginRouter } from "./http/login-router.js";
 import { SessionTokenProvider, startTokenRefreshLoop } from "./http/session-provider.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
+// Loopback only by default; set HOST=0.0.0.0 to expose on the network.
+const HOST = process.env.HOST ?? "127.0.0.1";
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? `http://localhost:${PORT}`).replace(/\/$/, "");
 const JWT_SECRET_STR = process.env.MCP_JWT_SECRET;
 
@@ -170,8 +172,8 @@ startTokenRefreshLoop(provider.userTokens, 60_000);
 
 /* -------------------------------- Listen ----------------------------- */
 
-app.listen(PORT, () => {
-  console.log(`iFood MCP remote listening on :${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`iFood MCP remote listening on ${HOST}:${PORT}`);
   console.log(`  Public URL:     ${PUBLIC_URL}`);
   console.log(`  Resource (MCP): ${resourceUrl.href}`);
   console.log(`  Authorization:  ${issuerUrl.href}`);
